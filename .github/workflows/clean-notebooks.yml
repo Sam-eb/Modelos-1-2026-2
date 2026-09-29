@@ -2,7 +2,7 @@ name: Limpiar Jupyter Notebooks
 
 on:
   push:
-    branches: [ "main", "develop", "Feature/Exploración-de-los-datos" ] # Agrega aquí las ramas donde quieres que se ejecute en los commits directos
+    branches: [ "main", "develop", "Hot-Fix/Data-set" ] # Agrega aquí las ramas donde quieres que se ejecute en los commits directos
     paths:
       - '**.ipynb'
   pull_request:
