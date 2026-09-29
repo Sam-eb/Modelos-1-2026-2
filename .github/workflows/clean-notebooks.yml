@@ -2,11 +2,13 @@ name: Limpiar Jupyter Notebooks
 
 on:
   push:
-    branches: [ "main", "develop", "Hot-Fix/Data-set" ] # Agrega aquí las ramas donde quieres que se ejecute en los commits directos
+    branches:
+      - '**' # Rastreamos TODAS las ramas existentes y futuras
     paths:
       - '**.ipynb'
   pull_request:
-    branches: [ "main", "develop" ] # Se ejecuta cuando se abre/actualiza un PR hacia estas ramas
+    branches:
+      - '**' # Rastrea PRs hacia cualquier rama (en teoría, solo deberían ser main y Develop)
     paths:
       - '**.ipynb'
 
