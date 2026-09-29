@@ -30,7 +30,7 @@ jobs:
 
       - name: Limpiar notebooks
         run: |
-          nbstripout **/*.ipynb
+          find . -name "*.ipynb" -exec nbstripout {} +
 
       - name: Hacer commit de los notebooks limpios
         uses: stefanzweifel/git-auto-commit-action@v5
