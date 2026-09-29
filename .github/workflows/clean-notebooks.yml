@@ -3,37 +3,30 @@ name: Limpiar Jupyter Notebooks
 on:
   pull_request:
     paths:
-      
-'**.ipynb'
+      - '**.ipynb'
 
 jobs:
   clean-notebooks:
     runs-on: ubuntu-latest
     steps:
-      
-name: Checkout del código
-      uses: actions/checkout@v4
-      with:
-        ref: ${{ github.head_ref }}
+      - name: Checkout del código
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
 
-      
-name: Configurar Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: '3.x'
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
 
-      
-name: Instalar nbstripout
-      run: pip install nbstripout
+      - name: Instalar nbstripout
+        run: pip install nbstripout
 
-      
-name: Limpiar notebooks
-      run: |
-        nbstripout */.ipynb
+      - name: Limpiar notebooks
+        run: |
+          nbstripout **/*.ipynb
 
-      
-name: Hacer commit de los notebooks limpios
-      uses: stefanzweifel/git-auto-commit-action@v5
-      with:
-        commit_message: "style: limpiar outputs de notebooks mediante nbstripout [skip ci]"
-##NOMBRE##
+      - name: Hacer commit de los notebooks limpios
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "style: limpiar outputs de notebooks mediante nbstripout [skip ci]"
