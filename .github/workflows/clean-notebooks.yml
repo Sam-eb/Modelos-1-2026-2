@@ -3,12 +3,13 @@ name: Limpiar Jupyter Notebooks
 on:
   push:
     branches:
-      - '**' # Rastreamos TODAS las ramas existentes y futuras
+      - '**' # Rastreamos TODAS las ramas existentes y futuras (limpia solo si es necesario)
     paths:
       - '**.ipynb'
   pull_request:
     branches:
-      - '**' # Rastrea PRs hacia cualquier rama (en teoría, solo deberían ser main y Develop)
+      - 'main'
+      - 'develop' # Valida la limpieza únicamente al enviar un PR hacia Develop o main
     paths:
       - '**.ipynb'
 
