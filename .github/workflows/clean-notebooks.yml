@@ -39,3 +39,8 @@ jobs:
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
           commit_message: "style: limpiar outputs de notebooks mediante nbstripout [skip ci]"
+          
+      - name: Limpiar notebooks
+        if: "!contains(github.event.head_commit.message, '[keep-outputs]')"
+        run: |
+          find . -name "*.ipynb" -exec nbstripout {} +
