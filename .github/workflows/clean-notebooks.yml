@@ -1,0 +1,46 @@
+name: Limpiar Jupyter Notebooks
+
+on:
+  push:
+    branches:
+      - '**' # Rastreamos TODAS las ramas existentes y futuras (limpia solo si es necesario)
+    paths:
+      - '**.ipynb'
+  pull_request:
+    branches:
+      - 'main'
+      - 'develop' # Valida la limpieza únicamente al enviar un PR hacia Develop o main
+    paths:
+      - '**.ipynb'
+
+jobs:
+  clean-notebooks:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout del código
+        uses: actions/checkout@v4
+        with:
+          # Para eventos 'push', github.ref obtiene la rama actual del commit
+          ref: ${{ github.head_ref || github.ref }}
+
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Instalar nbstripout
+        run: pip install nbstripout
+
+      - name: Limpiar notebooks
+        run: |
+          find . -name "*.ipynb" -exec nbstripout {} +
+
+      - name: Hacer commit de los notebooks limpios
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "style: limpiar outputs de notebooks mediante nbstripout [skip ci]"
+          
+      - name: Limpiar notebooks
+        if: "!contains(github.event.head_commit.message, '[keep-outputs]')"
+        run: |
+          find . -name "*.ipynb" -exec nbstripout {} +
