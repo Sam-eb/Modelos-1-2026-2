@@ -87,17 +87,15 @@ Una vez elegido el modelo, `X_test` se utilizó una única vez para la evaluaci�
 ### Limitaciones
 
 - **Fuga leve de información dentro de la validación cruzada.** La imputación y el `OneHotEncoder` se ajustaron con todo `X_train` antes de la validación cruzada, y no dentro de cada fold. Esto introduce una fuga leve que afecta por igual a todos los modelos y puede inflar ligeramente las cifras de la tabla de resultados, aunque no debería cambiar el ranking relativo entre ellos. El conjunto `X_test` no se vio afectado, porque la separación se hizo antes de cualquier transformación.
-- **Comparación con distinto nivel de ajuste.** Gradient Boosting y el árbol de decisión se evaluaron con hiperparámetros fijos, mientras que Random Forest y SVM utilizaron una búsqueda inicial de hiperparámetros. Por eso la comparación no es completamente equitativa a favor de estos dos últimos.
 - **Imputación de `Age` no determinista por lote.** La imputación de `Age` muestrea una distribución normal con semilla fija (67), pero la semilla se aplica en cada llamada: la edad asignada a un pasajero con `Age` vacío depende de su posición entre los faltantes de ese lote. Un mismo pasajero puede recibir edades distintas según con quién se prediga. Para esta fase se considera aceptable.
 - **El modelo requiere el módulo `preprocesamiento.py`.** `modelo.joblib` incluye una clase propia (`ImputadorTitanic`), por lo que solo puede cargarse si `preprocesamiento.py` está disponible en el path. Además, debe cargarse con la misma versión de `scikit-learn` con que se guardó.
-- **Brecha entre entrenamiento y validación en Random Forest.** Su accuracy de entrenamiento (0.8339) es aproximadamente 5 puntos porcentuales mayor que la de validación, lo que sugiere cierto riesgo de sobreajuste.
 
 ### Mejoras futuras
 
 - Antes de la Fase 2, valorar reemplazar el muestreo aleatorio de `Age` por la mediana, que es determinista y entrega la misma predicción para un mismo pasajero.
 - Integrar la imputación y el `OneHotEncoder` dentro de un único `Pipeline` desde el inicio de la comparación, de modo que se ajusten solo con los datos de entrenamiento de cada fold y se elimine la fuga leve.
 - Evaluar todos los candidatos con el mismo esfuerzo de búsqueda de hiperparámetros, y hacer una búsqueda más exhaustiva en Random Forest y SVM.
-- Incorporar métricas adicionales como ROC-AUC.
+- Evaluar la posibilidad de incorporar métricas adicionales como ROC-AUC.
 - Convertir el notebook en scripts de entrenamiento y predicción, a partir de `preprocesamiento.py`.
 
 ## Instrucciones para ejecutar el notebook
