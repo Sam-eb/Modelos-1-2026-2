@@ -1,4 +1,4 @@
-"""Preprocesamiento del Titanic Espacial (Fase 1 / Fase 2).
+"""Preprocesamiento del Titanic Espacial (Fase 1).
 
 Reproduce las reglas de imputación del notebook, ajustándose solo con los
 datos de entrenamiento:
@@ -6,7 +6,7 @@ datos de entrenamiento:
   - Gastos de pasajeros con CryoSleep=True: 0 (dormidos no gastan).
   - CryoSleep faltante con algún gasto > 0: 0 (quien gasta no está dormido).
   - CryoSleep restante: moda.
-  - Age: mediana aprendida en entrenamiento (determinista y estable en lotes e individual).
+  - Age: muestreo de una normal(media, desviación) con valores >= 0.
   - Gastos restantes: mediana.
 Luego: log1p sobre los gastos y one-hot para HomePlanet y Deck.
 """
@@ -36,7 +36,7 @@ def preparar_datos(df: pd.DataFrame) -> pd.DataFrame:
 class ImputadorTitanic(BaseEstimator, TransformerMixin):
     """Imputación con las reglas del notebook. fit usa solo entrenamiento."""
 
-    def __init__(self, semilla=None):
+    def __init__(self, semilla=67):
         self.semilla = semilla
 
     def _reglas_dominio(self, X):
@@ -55,7 +55,8 @@ class ImputadorTitanic(BaseEstimator, TransformerMixin):
         self.moda_deck_ = X["Deck"].mode()[0]
         Xr = self._reglas_dominio(X)
         self.moda_cryosleep_ = Xr["CryoSleep"].mode()[0]
-        self.mediana_age_ = X["Age"].median()
+        self.media_age_ = X["Age"].mean()
+        self.std_age_ = X["Age"].std()
         self.medianas_gastos_ = {g: Xr[g].median() for g in GASTOS}
         return self
 
@@ -65,16 +66,18 @@ class ImputadorTitanic(BaseEstimator, TransformerMixin):
         X["Deck"] = X["Deck"].fillna(self.moda_deck_)
         X = self._reglas_dominio(X)
         X["CryoSleep"] = X["CryoSleep"].fillna(self.moda_cryosleep_)
-        # Age: imputación determinista con mediana aprendida en entrenamiento
+        # Age: muestreo normal reproducible (misma semilla en cada llamada)
         faltan = X["Age"].isna()
         if faltan.any():
-            X.loc[faltan, "Age"] = self.mediana_age_
+            rng = np.random.RandomState(self.semilla)
+            muestra = rng.normal(self.media_age_, self.std_age_, faltan.sum())
+            X.loc[faltan, "Age"] = np.clip(muestra, 0, None)
         for g in GASTOS:
             X[g] = X[g].fillna(self.medianas_gastos_[g])
         return X
 
 
-def crear_preprocesamiento(semilla=None) -> "Pipeline":
+def crear_preprocesamiento(semilla=67) -> "Pipeline":
     """Imputación del notebook + log1p en gastos + one-hot en categóricas."""
     from sklearn.pipeline import Pipeline
     codificar = ColumnTransformer(
@@ -83,6 +86,5 @@ def crear_preprocesamiento(semilla=None) -> "Pipeline":
             ("log_gastos", FunctionTransformer(np.log1p), GASTOS),
         ],
         remainder="passthrough",  # CryoSleep y Age quedan tal cual
-        verbose_feature_names_out=False,
     )
-    return Pipeline([("imputar", ImputadorTitanic(semilla=semilla)), ("codificar", codificar)])
+    return Pipeline([("imputar", ImputadorTitanic(semilla)), ("codificar", codificar)])
