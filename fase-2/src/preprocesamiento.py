@@ -15,7 +15,7 @@ def preparar_datos(df: pd.DataFrame) -> pd.DataFrame:
     datos = df.copy()
     if "Deck" not in datos.columns:
         datos["Deck"] = datos["Cabin"].str.split("/", expand=True)[0]
-    datos["CryoSleep"] = pd.to_numeric(datos["CryoSleep"])
+    datos["CryoSleep"] = pd.to_numeric(datos["CryoSleep"]).astype(float)
     datos["Age"] = pd.to_numeric(datos["Age"])
     for gasto in GASTOS:
         datos[gasto] = pd.to_numeric(datos[gasto])
