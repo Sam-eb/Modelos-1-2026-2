@@ -1,0 +1,51 @@
+{
+  "fecha_creacion": "2026-10-28T22:32:11.985382+00:00",
+  "tipo_problema": "clasificacion_binaria",
+  "target": "Transported",
+  "algoritmo": "RandomForestClassifier",
+  "hiperparametros": {
+    "n_estimators": 300,
+    "max_depth": 16,
+    "min_samples_split": 10,
+    "min_samples_leaf": 4
+  },
+  "features": [
+    "HomePlanet",
+    "CryoSleep",
+    "Deck",
+    "Age",
+    "RoomService",
+    "Spa",
+    "VRDeck"
+  ],
+  "tipos_features": {
+    "HomePlanet": "categorica",
+    "CryoSleep": "numerica_binaria",
+    "Deck": "categorica",
+    "Age": "numerica",
+    "RoomService": "numerica",
+    "Spa": "numerica",
+    "VRDeck": "numerica"
+  },
+  "semilla": 42,
+  "fuente_datos": "data\\datos.csv",
+  "observaciones": {
+    "total": 8693,
+    "entrenamiento": 6930,
+    "prueba": 1763
+  },
+  "estrategia_separacion": {
+    "metodo": "GroupShuffleSplit",
+    "variable_agrupacion": "PassengerId (grupo de viaje)",
+    "test_size": 0.2
+  },
+  "validacion_cruzada": {
+    "metodo": "StratifiedGroupKFold",
+    "n_splits": 5,
+    "aplicada_sobre": "conjunto de entrenamiento"
+  },
+  "metrica": "accuracy",
+  "version_python": "3.14.2 (tags/v3.14.2:df79316, Dec  5 2025, 17:18:21) [MSC v.1944 64 bit (AMD64)]",
+  "requirements": "requirements.txt",
+  "hash_commit": "50a8311af119d8512a81a2d102419abdb04a471d"
+}
