@@ -1,4 +1,10 @@
-"""Preprocesamiento del Titanic Espacial para entrenamiento y predicción."""
+"""Preprocesamiento del Titanic Espacial para entrenamiento y predicción.
+
+`preparar_datos` solo selecciona y convierte tipos (no aprende nada de los
+datos). Todo lo que aprende de los datos (modas, medianas, categorías) vive en
+el pipeline de `crear_preprocesamiento` y se ajusta únicamente con el
+conjunto de entrenamiento.
+"""
 
 import numpy as np
 import pandas as pd
@@ -8,30 +14,78 @@ from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import FunctionTransformer, OneHotEncoder
 
 FEATURES = ["HomePlanet", "CryoSleep", "Deck", "Age", "RoomService", "Spa", "VRDeck"]
+CATEGORICAS = ["HomePlanet", "Deck"]
+NUMERICAS = ["Age", "RoomService", "Spa", "VRDeck"]
 GASTOS = ["RoomService", "Spa", "VRDeck"]
+
+# Representaciones aceptadas para CryoSleep (se comparan en minúsculas).
+_VALORES_BOOLEANOS = {
+    "true": 1.0,
+    "false": 0.0,
+    "1": 1.0,
+    "0": 0.0,
+    "1.0": 1.0,
+    "0.0": 0.0,
+}
+
+
+def convertir_booleano(serie: pd.Series, nombre: str = "CryoSleep") -> pd.Series:
+    """Convierte True/False, 1/0 o sus equivalentes en texto a 1.0/0.0.
+
+    Los nulos se conservan como NaN (los imputa el pipeline). Cualquier otro
+    valor produce un ValueError.
+    """
+    texto = serie.astype("string").str.strip().str.lower()
+    convertida = texto.map(_VALORES_BOOLEANOS)
+    invalidos = serie[texto.notna() & convertida.isna()]
+    if not invalidos.empty:
+        raise ValueError(
+            f"La columna '{nombre}' contiene valores no convertibles a booleano: "
+            f"{invalidos.head(3).tolist()}"
+        )
+    return convertida.astype(float)
+
+
+def _a_texto(serie: pd.Series) -> pd.Series:
+    """Convierte a texto conservando los nulos como NaN (aunque la columna
+    venga completamente vacía y pandas la haya leído como numérica)."""
+    texto = serie.astype("string").str.strip()
+    return texto.astype(object).where(texto.notna() & (texto != ""), np.nan)
 
 
 def preparar_datos(df: pd.DataFrame) -> pd.DataFrame:
-    datos = df.copy()
-    if "Deck" not in datos.columns:
-        datos["Deck"] = datos["Cabin"].str.split("/", expand=True)[0]
-    datos["CryoSleep"] = pd.to_numeric(datos["CryoSleep"]).astype(float)
-    datos["Age"] = pd.to_numeric(datos["Age"])
-    for gasto in GASTOS:
-        datos[gasto] = pd.to_numeric(datos[gasto])
+    """Datos crudos -> las 7 variables de entrada, en el orden de FEATURES.
+
+    Deriva Deck desde Cabin (formato 'Deck/Num/Side') si Deck no viene dado.
+    Las columnas adicionales se ignoran.
+    """
+    datos = pd.DataFrame(index=df.index)
+    datos["HomePlanet"] = _a_texto(df["HomePlanet"])
+    datos["CryoSleep"] = convertir_booleano(df["CryoSleep"])
+    if "Deck" in df.columns:
+        datos["Deck"] = _a_texto(df["Deck"])
+    else:
+        datos["Deck"] = _a_texto(_a_texto(df["Cabin"]).str.split("/").str[0])
+    for columna in NUMERICAS:
+        datos[columna] = pd.to_numeric(df[columna]).astype(float)
     return datos[FEATURES]
 
 
 class ImputadorTitanic(BaseEstimator, TransformerMixin):
-    """Imputa con estadísticas de entrenamiento y las reglas de dominio."""
+    """Imputa con estadísticas aprendidas en entrenamiento y reglas de dominio.
 
-    def __init__(self, semilla: int = 67):
-        self.semilla = semilla
+    - HomePlanet y Deck: moda.
+    - Gastos de pasajeros con CryoSleep=1: 0 (dormidos no gastan).
+    - CryoSleep faltante con algún gasto > 0: 0 (quien gasta no está dormido).
+    - CryoSleep restante: moda.
+    - Age: mediana (determinista; corrige la imputación aleatoria de la Fase 1).
+    - Gastos restantes: mediana.
+    """
 
     @staticmethod
     def _reglas_dominio(X: pd.DataFrame) -> pd.DataFrame:
         datos = X.copy()
-        dormido = datos["CryoSleep"] == True  # noqa: E712
+        dormido = datos["CryoSleep"] == 1
         for gasto in GASTOS:
             datos.loc[dormido, gasto] = datos.loc[dormido, gasto].fillna(0)
         gasta = datos["CryoSleep"].isna() & (
@@ -65,14 +119,18 @@ class ImputadorTitanic(BaseEstimator, TransformerMixin):
         return datos
 
 
-def crear_preprocesamiento(semilla: int = 67) -> Pipeline:
-    """Crea el pipeline de imputación, log1p y codificación one-hot."""
+def crear_preprocesamiento() -> Pipeline:
+    """Crea el pipeline de imputación, log1p y codificación one-hot.
+
+    Las categorías no vistas en entrenamiento (HomePlanet o Deck) se codifican
+    con todas las columnas one-hot en 0 (handle_unknown="ignore").
+    """
     codificar = ColumnTransformer(
         [
             (
                 "onehot",
                 OneHotEncoder(handle_unknown="ignore", sparse_output=False),
-                ["HomePlanet", "Deck"],
+                CATEGORICAS,
             ),
             ("log_gastos", FunctionTransformer(np.log1p), GASTOS),
         ],
@@ -80,7 +138,7 @@ def crear_preprocesamiento(semilla: int = 67) -> Pipeline:
     )
     return Pipeline(
         [
-            ("imputar", ImputadorTitanic(semilla=semilla)),
+            ("imputar", ImputadorTitanic()),
             ("codificar", codificar),
         ]
     )

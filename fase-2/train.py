@@ -1,9 +1,12 @@
 """Entrenamiento reproducible del modelo Titanic Espacial."""
 
 import argparse
+import hashlib
+import os
+import platform
 import subprocess
-import sys
 from datetime import datetime, timezone
+from importlib.metadata import version as version_paquete
 from pathlib import Path
 from typing import Mapping, Sequence
 
@@ -65,26 +68,76 @@ def crear_parser() -> argparse.ArgumentParser:
         default=0.2,
         help="Proporción de grupos reservada para prueba (default: 0.2).",
     )
+    parser.add_argument(
+        "--cv-folds",
+        type=int,
+        default=5,
+        help=(
+            "Particiones de la validación cruzada agrupada sobre el entrenamiento; "
+            "0 la omite (default: 5)."
+        ),
+    )
     return parser
 
 
-def _obtener_hash_commit() -> str | None:
+# Archivos cuyo estado en git define el código usado para entrenar.
+ARCHIVOS_CODIGO = ("src", "train.py", "predict.py", "requirements.txt")
+
+
+def _ejecutar_git(*argumentos: str) -> str | None:
     raiz_proyecto = Path(__file__).resolve().parent
     try:
         resultado = subprocess.run(
-            ["git", "-C", str(raiz_proyecto), "rev-parse", "HEAD"],
+            ["git", "-C", str(raiz_proyecto), *argumentos],
             check=True,
             capture_output=True,
             text=True,
         )
     except (FileNotFoundError, subprocess.CalledProcessError):
         return None
-    return resultado.stdout.strip() or None
+    return resultado.stdout.strip()
+
+
+def _info_codigo() -> dict[str, object]:
+    """Commit de git usado para entrenar.
+
+    Dentro de Docker no hay carpeta .git; en ese caso se usa la variable de
+    entorno GIT_COMMIT (p. ej. `docker run -e GIT_COMMIT=$(git rev-parse HEAD)`).
+    """
+    commit = _ejecutar_git("rev-parse", "HEAD")
+    if commit:
+        cambios = _ejecutar_git("status", "--porcelain", "--", *ARCHIVOS_CODIGO)
+        return {
+            "hash_commit": commit,
+            "cambios_sin_commit": bool(cambios),
+            "origen": "git",
+        }
+    commit_entorno = os.environ.get("GIT_COMMIT") or None
+    return {
+        "hash_commit": commit_entorno,
+        "cambios_sin_commit": None,
+        "origen": "variable GIT_COMMIT" if commit_entorno else "no disponible",
+    }
+
+
+def _sha256(ruta: Path) -> str:
+    digest = hashlib.sha256()
+    with ruta.open("rb") as archivo:
+        for bloque in iter(lambda: archivo.read(1 << 20), b""):
+            digest.update(bloque)
+    return digest.hexdigest()
 
 
 def _entrenar(args: argparse.Namespace) -> tuple[Path, Mapping[str, float]]:
     if not 0 < args.test_size < 1:
         raise ValueError("--test-size debe ser un valor mayor que 0 y menor que 1.")
+    if args.cv_folds == 1 or args.cv_folds < 0:
+        raise ValueError("--cv-folds debe ser 0 (sin validación cruzada) o un entero >= 2.")
+    destino = Path(args.output_dir) / args.version
+    if destino.exists():
+        raise FileExistsError(
+            f"La versión '{args.version}' ya existe en {destino}; use otro --version."
+        )
 
     df, y, groups = cargar_datos_entrenamiento(args.data, target=args.target)
     if not y.isin([0, 1]).all():
@@ -118,33 +171,38 @@ def _entrenar(args: argparse.Namespace) -> tuple[Path, Mapping[str, float]]:
     accuracy_test = accuracy_score(y_test, modelo.predict(X_test))
     accuracy_test_base = accuracy_score(y_test, modelo_base.predict(X_test))
 
-    cv = StratifiedGroupKFold(
-        n_splits=5,
-        shuffle=True,
-        random_state=args.seed,
-    )
-    scores_cv = cross_val_score(
-        crear_modelo(semilla=args.seed),
-        X_train,
-        y_train,
-        groups=groups_train,
-        cv=cv,
-        scoring="accuracy",
-        n_jobs=1,
-    )
-
-    metricas = {
+    metricas: dict[str, float | None] = {
         "accuracy_test": accuracy_test,
         "accuracy_test_base": accuracy_test_base,
-        "accuracy_cv_mean": np.mean(scores_cv),
-        "accuracy_cv_std": np.std(scores_cv),
+        "accuracy_cv_mean": None,
+        "accuracy_cv_std": None,
     }
+    if args.cv_folds:
+        # El pipeline completo se reajusta en cada fold: sin fuga entre folds.
+        cv = StratifiedGroupKFold(
+            n_splits=args.cv_folds,
+            shuffle=True,
+            random_state=args.seed,
+        )
+        scores_cv = cross_val_score(
+            crear_modelo(semilla=args.seed),
+            X_train,
+            y_train,
+            groups=groups_train,
+            cv=cv,
+            scoring="accuracy",
+            n_jobs=1,
+        )
+        metricas["accuracy_cv_mean"] = float(np.mean(scores_cv))
+        metricas["accuracy_cv_std"] = float(np.std(scores_cv))
 
     hiperparametros = {
         nombre: modelo.named_steps["rf"].get_params()[nombre]
         for nombre in HIPERPARAMETROS_RF
     }
+    ruta_datos = Path(args.data)
     metadata = {
+        "version": args.version,
         "fecha_creacion": datetime.now(timezone.utc).isoformat(),
         "tipo_problema": "clasificacion_binaria",
         "target": args.target,
@@ -161,7 +219,11 @@ def _entrenar(args: argparse.Namespace) -> tuple[Path, Mapping[str, float]]:
             "VRDeck": "numerica",
         },
         "semilla": args.seed,
-        "fuente_datos": str(args.data),
+        "datos": {
+            "fuente": "Kaggle - Spaceship Titanic (train.csv)",
+            "archivo": ruta_datos.as_posix(),
+            "sha256": _sha256(ruta_datos),
+        },
         "observaciones": {
             "total": len(df),
             "entrenamiento": len(train_idx),
@@ -172,15 +234,24 @@ def _entrenar(args: argparse.Namespace) -> tuple[Path, Mapping[str, float]]:
             "variable_agrupacion": "PassengerId (grupo de viaje)",
             "test_size": args.test_size,
         },
-        "validacion_cruzada": {
-            "metodo": "StratifiedGroupKFold",
-            "n_splits": 5,
-            "aplicada_sobre": "conjunto de entrenamiento",
-        },
+        "validacion_cruzada": (
+            {
+                "metodo": "StratifiedGroupKFold",
+                "n_splits": args.cv_folds,
+                "aplicada_sobre": "conjunto de entrenamiento",
+            }
+            if args.cv_folds
+            else None
+        ),
         "metrica": "accuracy",
-        "version_python": sys.version,
+        "etiquetas": {"1": "Transportado (Transported=True)", "0": "No transportado"},
+        "version_python": platform.python_version(),
+        "librerias": {
+            nombre: version_paquete(nombre)
+            for nombre in ("scikit-learn", "pandas", "numpy", "joblib")
+        },
         "requirements": "requirements.txt",
-        "hash_commit": _obtener_hash_commit(),
+        "codigo": _info_codigo(),
     }
 
     directorio_version = guardar_version(
@@ -203,10 +274,11 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     print(f"Accuracy Random Forest (test): {metricas['accuracy_test']:.4f}")
     print(f"Accuracy modelo base (test): {metricas['accuracy_test_base']:.4f}")
-    print(
-        f"Accuracy CV (media +/- std): "
-        f"{metricas['accuracy_cv_mean']:.4f} +/- {metricas['accuracy_cv_std']:.4f}"
-    )
+    if metricas["accuracy_cv_mean"] is not None:
+        print(
+            f"Accuracy CV (media +/- std): "
+            f"{metricas['accuracy_cv_mean']:.4f} +/- {metricas['accuracy_cv_std']:.4f}"
+        )
     print(f"Versión guardada en: {directorio_version}")
     print("Archivos guardados: modelo.joblib, metrics.json, metadata.json")
     return 0

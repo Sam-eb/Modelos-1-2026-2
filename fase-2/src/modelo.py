@@ -11,7 +11,7 @@ def crear_modelo(semilla: int = 67) -> Pipeline:
     """Construye el pipeline completo con preprocesamiento y Random Forest."""
     return Pipeline(
         [
-            ("preprocesamiento", crear_preprocesamiento(semilla=semilla)),
+            ("preprocesamiento", crear_preprocesamiento()),
             (
                 "rf",
                 RandomForestClassifier(
