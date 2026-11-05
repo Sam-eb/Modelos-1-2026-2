@@ -216,7 +216,6 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
-fase-2/data/datos.csv
 
 # Material local del equipo (no forma parte de la entrega)
 docs/

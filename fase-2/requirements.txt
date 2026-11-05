@@ -1,0 +1,8 @@
+# Dependencias de la Fase 2 (Python 3.13, igual en local y en Docker).
+# Versiones exactas: el modelo serializado con joblib depende de ellas.
+pandas==2.2.3
+numpy==2.2.6
+scikit-learn==1.9.1
+scipy==1.18.1
+joblib==1.6.0
+pytest==9.2.0
