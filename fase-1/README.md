@@ -45,6 +45,7 @@ fase-1/
 ├── notebook.ipynb
 ├── notebook_outputs.ipynb
 ├── preprocesamiento.py
+├── requirements.txt
 └── modelo.joblib
 ```
 
@@ -133,9 +134,9 @@ En concordancia con las buenas prácticas estadísticas:
    git clone https://github.com/Sam-eb/Modelos-1-2026-2.git
    cd Modelos-1-2026-2
    ```
-2. Instalar las dependencias recomendadas:
+2. Instalar las dependencias del notebook (versiones mínimas en `fase-1/requirements.txt`):
    ```bash
-   pip install pandas numpy scikit-learn scipy matplotlib seaborn joblib
+   pip install -r fase-1/requirements.txt
    ```
 3. Verificar la presencia de `Data_Set.csv` en la raíz y de `fase-1/preprocesamiento.py` en la carpeta `fase-1`.
 4. Iniciar Jupyter y ejecutar `fase-1/notebook.ipynb`:
