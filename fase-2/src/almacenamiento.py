@@ -92,7 +92,14 @@ def cargar_version(
             f"{', '.join(faltantes)}."
         )
 
-    modelo = joblib.load(rutas["modelo.joblib"])
+    try:
+        modelo = joblib.load(rutas["modelo.joblib"])
+    except Exception as error:
+        raise ValueError(
+            f"No se pudo cargar '{rutas['modelo.joblib']}'. Verifique que fue creado "
+            "con train.py y con las versiones de requirements.txt. "
+            f"Detalle: {type(error).__name__}: {error}"
+        ) from error
     metricas = _cargar_json(rutas["metrics.json"])
     metadata = _cargar_json(rutas["metadata.json"])
     return modelo, metricas, metadata

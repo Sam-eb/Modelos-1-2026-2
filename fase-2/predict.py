@@ -12,7 +12,7 @@ import pandas as pd
 
 from src.almacenamiento import cargar_version
 from src.datos import cargar_datos_prediccion
-from src.preprocesamiento import preparar_datos
+from src.preprocesamiento import FEATURES, preparar_datos
 
 
 def crear_parser() -> argparse.ArgumentParser:
@@ -22,7 +22,7 @@ def crear_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--model",
         required=True,
-        help="Ruta a la carpeta de la versión del modelo.",
+        help="Carpeta de la versión (p. ej. models/v1) o su archivo modelo.joblib.",
     )
     parser.add_argument(
         "--input",
@@ -92,9 +92,13 @@ def _predecir(args: argparse.Namespace) -> tuple[int, Path]:
     ruta_entrada = Path(args.input)
     ruta_salida = Path(args.output)
 
+    # Se acepta la carpeta de la versión o su archivo modelo.joblib.
+    if ruta_modelo.is_file() and ruta_modelo.name == "modelo.joblib":
+        ruta_modelo = ruta_modelo.parent
     if not ruta_modelo.is_dir():
         raise FileNotFoundError(
-            f"El directorio del modelo no existe o no es un directorio: {ruta_modelo}"
+            "El modelo no existe: indique la carpeta de la versión "
+            f"(p. ej. models/v1) o su archivo modelo.joblib. Ruta recibida: {ruta_modelo}"
         )
     if not ruta_entrada.is_file():
         raise FileNotFoundError(
@@ -103,7 +107,13 @@ def _predecir(args: argparse.Namespace) -> tuple[int, Path]:
     if ruta_salida.resolve() == ruta_entrada.resolve():
         raise ValueError("La ruta de salida no puede ser la misma que la del CSV de entrada.")
 
-    modelo, _, _ = cargar_version(ruta_modelo)
+    modelo, _, metadata = cargar_version(ruta_modelo)
+    features_version = metadata.get("features")
+    if features_version != list(FEATURES):
+        raise ValueError(
+            f"La versión '{ruta_modelo}' espera las variables {features_version}, "
+            f"pero este código usa {list(FEATURES)}; no son compatibles."
+        )
     datos = cargar_datos_prediccion(ruta_entrada)
     resultado = _generar_predicciones(modelo, datos)
     _guardar_csv_atomico(resultado, ruta_salida)
