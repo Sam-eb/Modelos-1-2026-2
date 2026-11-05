@@ -1,0 +1,22 @@
+# Entornos virtuales y cachés
+.venv/
+venv/
+env/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# Temporales (escritura atómica de predict.py y guardar_version)
+*.tmp
+
+# Dataset completo: se copia desde la raíz (cp ../Data_Set.csv data/datos.csv)
+data/datos.csv
+
+# Resultados generados al ejecutar los scripts
+outputs/*
+!outputs/.gitkeep
+
+# Versiones del modelo: solo se versionan las entregadas
+models/*
+!models/v1/
+!models/v2/
