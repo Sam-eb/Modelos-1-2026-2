@@ -1,8 +1,10 @@
 """Carga y validación de datos para el Titanic Espacial."""
 
 from pathlib import Path
-from typing import Any
+
 import pandas as pd
+
+from .preprocesamiento import convertir_booleano
 
 COLUMNAS_ENTRADA_MINIMAS = {
     "HomePlanet",
@@ -69,9 +71,11 @@ def validar_columnas_entrada(df: pd.DataFrame, es_entrenamiento: bool = False, t
 
 
 def validar_tipos_datos(df: pd.DataFrame) -> None:
-    """Valida que los valores de las columnas numéricas y booleanas sean compatibles.
+    """Valida que los valores no nulos sean compatibles con el modelo.
 
-    Detecta si existen valores no nulos que no pueden convertirse a números.
+    - Age y gastos: numéricos y no negativos.
+    - CryoSleep: True/False, 1/0 o su equivalente en texto.
+    Los nulos son válidos: los trata la imputación del pipeline.
     """
     for col in COLUMNAS_NUMERICAS:
         if col in df.columns:
@@ -83,23 +87,15 @@ def validar_tipos_datos(df: pd.DataFrame) -> None:
                 raise ValueError(
                     f"La columna '{col}' contiene valores no numéricos no válidos: {ejemplos}"
                 )
+            negativos = valores_originales[valores_coercionados < 0]
+            if not negativos.empty:
+                raise ValueError(
+                    f"La columna '{col}' contiene valores negativos: "
+                    f"{negativos.head(3).tolist()}"
+                )
 
     if "CryoSleep" in df.columns:
-        valores_cryo = df["CryoSleep"].dropna()
-        # CryoSleep admite True/False, 1/0, o strings booleanos
-        coercionados = pd.to_numeric(valores_cryo, errors="coerce")
-        # Si no es directamente numérico, verificar si son booleanos de python o cadenas equivalentes
-        invalidos = []
-        for val in valores_cryo:
-            if isinstance(val, bool) or val in (0, 1, 0.0, 1.0, "0", "1", "True", "False", "true", "false"):
-                continue
-            invalidos.append(val)
-            if len(invalidos) >= 3:
-                break
-        if invalidos:
-            raise ValueError(
-                f"La columna 'CryoSleep' contiene valores no convertibles a booleano: {invalidos}"
-            )
+        convertir_booleano(df["CryoSleep"], nombre="CryoSleep")
 
 
 def cargar_datos_entrenamiento(
@@ -125,8 +121,8 @@ def cargar_datos_entrenamiento(
             f"La variable objetivo '{target}' contiene {n_nulos} valores nulos en el conjunto de entrenamiento."
         )
 
-    # Convertir target a int (0 o 1)
-    y = y_raw.astype(int)
+    # Convertir target a int (0 o 1); acepta True/False, 1/0 o su texto
+    y = convertir_booleano(y_raw, nombre=target).astype(int)
 
     # Extraer vector de grupo desde PassengerId (formato 'gggg_nn')
     groups = df["PassengerId"].astype(str).str.split("_").str[0]
