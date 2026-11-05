@@ -13,11 +13,12 @@ from typing import Mapping, Sequence
 import numpy as np
 import pandas as pd
 from sklearn.metrics import accuracy_score
-from sklearn.model_selection import GroupShuffleSplit, StratifiedGroupKFold, cross_val_score
+from sklearn.model_selection import cross_val_score
 
 from src.almacenamiento import guardar_version
 from src.datos import cargar_datos_entrenamiento
 from src.modelo import crear_modelo, crear_modelo_base
+from src.particion import crear_cv, dividir_por_grupos
 from src.preprocesamiento import FEATURES, preparar_datos
 
 
@@ -146,12 +147,7 @@ def _entrenar(args: argparse.Namespace) -> tuple[Path, Mapping[str, float]]:
             "y contener únicamente 0/1 o False/True."
         )
 
-    splitter = GroupShuffleSplit(
-        n_splits=1,
-        test_size=args.test_size,
-        random_state=args.seed,
-    )
-    train_idx, test_idx = next(splitter.split(df, y, groups))
+    train_idx, test_idx = dividir_por_grupos(df, y, groups, args.test_size, args.seed)
 
     df_train = df.iloc[train_idx]
     df_test = df.iloc[test_idx]
@@ -179,11 +175,7 @@ def _entrenar(args: argparse.Namespace) -> tuple[Path, Mapping[str, float]]:
     }
     if args.cv_folds:
         # El pipeline completo se reajusta en cada fold: sin fuga entre folds.
-        cv = StratifiedGroupKFold(
-            n_splits=args.cv_folds,
-            shuffle=True,
-            random_state=args.seed,
-        )
+        cv = crear_cv(args.cv_folds, args.seed)
         scores_cv = cross_val_score(
             crear_modelo(semilla=args.seed),
             X_train,
