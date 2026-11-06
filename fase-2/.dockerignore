@@ -1,0 +1,20 @@
+.git
+.gitignore
+.venv/
+venv/
+env/
+__pycache__/
+.pytest_cache/
+*.py[cod]
+*.tmp
+
+# Datos y artefactos locales no necesarios para la imagen
+Data_Set.csv
+data/
+models/
+outputs/
+tests/
+
+# Credenciales y cachés
+.env
+*.log
