@@ -1,0 +1,6 @@
+{
+  "accuracy_test": 0.7811778290993071,
+  "accuracy_test_base": 0.5051963048498845,
+  "accuracy_cv_mean": 0.7866692864981722,
+  "accuracy_cv_std": 0.006761907204230006
+}

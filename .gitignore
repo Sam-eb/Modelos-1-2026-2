@@ -216,3 +216,6 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Material local del equipo (no forma parte de la entrega)
+docs/
