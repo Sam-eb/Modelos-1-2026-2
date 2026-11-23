@@ -1,0 +1,16 @@
+# Dependencias de la Fase 4 (Python 3.13, igual en local y en Docker).
+# Las de la Fase 2 y la Fase 3 se mantienen idénticas.
+pandas==2.2.3
+numpy==2.2.6
+scikit-learn==1.9.1
+scipy==1.18.1
+joblib==1.6.0
+pytest==9.2.0
+
+# API REST (Fase 3)
+fastapi==0.165.0
+starlette==1.10.0
+pydantic==2.14.4
+uvicorn==0.54.0
+# Cliente de pruebas de FastAPI (TestClient)
+httpx==0.28.1
