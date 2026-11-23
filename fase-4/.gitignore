@@ -1,0 +1,13 @@
+# Entornos virtuales y cachés
+.venv/
+venv/
+env/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# Registro vivo (se monta desde el host)
+logs/
+
+# Temporales
+*.tmp

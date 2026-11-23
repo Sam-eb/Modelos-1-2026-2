@@ -1,0 +1,57 @@
+# Metadatos de Git y credenciales/secrets.
+.git
+.git/**
+**/.git
+**/.git/**
+.env
+.env.*
+**/.env
+**/.env.*
+**/*credentials*
+**/*secret*
+**/*secrets*
+**/*token*
+**/*.pem
+**/*.key
+**/*.p12
+**/*.pfx
+**/.aws/**
+**/.ssh/**
+
+# Entornos virtuales y cachés de Python/pytest.
+.venv
+.venv/**
+**/.venv
+**/.venv/**
+venv
+venv/**
+**/venv
+**/venv/**
+env
+env/**
+**/env
+**/env/**
+__pycache__
+**/__pycache__
+**/__pycache__/**
+.pytest_cache
+**/.pytest_cache
+**/.pytest_cache/**
+
+# Documentación y la Fase 1 no forman parte del servicio.
+docs
+docs/**
+**/docs
+**/docs/**
+fase-1
+fase-1/**
+
+# Los CSV y modelos se montan desde el host.
+Data_Set.csv
+**/*.csv
+fase-2/models
+fase-2/models/**
+
+# El registro vivo se monta, no se copia.
+fase-4/logs
+fase-4/logs/**
