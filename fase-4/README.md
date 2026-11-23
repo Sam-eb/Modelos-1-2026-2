@@ -97,16 +97,36 @@ Sobre un registro vacío se enviaron 3 solicitudes a `/predict`:
 2. **Válida** – mismo pasajero → 200.
 3. **Inválida** – sin el campo `Age` → 422.
 
-Contenido del registro (`muestra_registro.csv`):
+La API corría en Docker con el comando de la sección [Docker](#docker)
+(`MODELO_VERSION=v1`) y la carpeta de registro vacía.  Solicitudes enviadas
+desde Git Bash:
+
+```bash
+J='{"PassengerId":"0001_01","HomePlanet":"Europa","CryoSleep":false,"Cabin":"B/0/P","Age":39,"RoomService":0,"Spa":0,"VRDeck":0}'
+curl -s -X POST http://localhost:8000/predict -H "Content-Type: application/json" -d "$J"
+curl -s -X POST http://localhost:8000/predict -H "Content-Type: application/json" -d "$J"
+curl -s -X POST http://localhost:8000/predict -H "Content-Type: application/json" -d '{"PassengerId":"0001_01","HomePlanet":"Europa","CryoSleep":false,"Cabin":"B/0/P","RoomService":0,"Spa":0,"VRDeck":0}'
+```
+
+Respuestas:
+
+```text
+{"PassengerId":"0001_01","prediccion":true,"etiqueta":"Transportado","probabilidad":0.576603127318395,"version":"v1"}
+{"PassengerId":"0001_01","prediccion":true,"etiqueta":"Transportado","probabilidad":0.5766031273183949,"version":"v1"}
+{"detail":"Entrada inválida. Age: campo obligatorio ausente","errores":[{"campo":"Age","mensaje":"campo obligatorio ausente","tipo":"missing"}]}
+```
+
+Contenido del registro tras detener el contenedor (copiado tal cual en
+`muestra_registro.csv`):
 
 ```csv
 fecha_hora,estado_http,version,prediccion
-2026-11-22T21:10:00+00:00,200,v1,true
-2026-11-22T21:10:05+00:00,200,v1,true
-2026-11-22T21:10:10+00:00,422,,
+2026-11-23T03:07:54+00:00,200,v1,true
+2026-11-23T03:07:54+00:00,200,v1,true
+2026-11-23T03:07:54+00:00,422,,
 ```
 
-Salida de `monitoreo.py`:
+Salida de `python monitoreo.py --registro muestra_registro.csv`:
 
 ```text
 Total de solicitudes: 3
@@ -128,7 +148,12 @@ problemas del modelo ni del servidor.
 
 Ambas versiones usan las mismas 7 variables (`HomePlanet`, `CryoSleep`,
 `Deck`, `Age`, `RoomService`, `Spa`, `VRDeck`), el mismo pipeline de
-preprocesamiento y la misma partición por grupos de viaje.
+preprocesamiento y el mismo procedimiento de partición por grupos de viaje
+(20 % de prueba).  Como la semilla cambia (42 y 123), **el conjunto de prueba
+no es el mismo**: la línea base de la clase mayoritaria es 0.4816 en `v1` y
+0.5052 en `v2`.  Por eso la diferencia de accuracy entre ambas no se lee como
+una mejora; para comparar dos versiones hay que evaluarlas sobre los mismos
+casos reservados (ver la política de reentrenamiento).
 
 ### Versión activa y cómo cambiarla
 
