@@ -1,0 +1,10 @@
+# Entornos virtuales y cachés
+.venv/
+venv/
+env/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# Temporales
+*.tmp
